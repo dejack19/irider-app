@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRider - Accesso Cloud</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* --- DARK THEME --- */
+        :root { 
+            --primary: #FFC244; 
+            --bg: #121212; 
+            --card-bg: #1E1E1E; 
+            --text-main: #FFFFFF; 
+            --text-muted: #A0A0A0; 
+            --input-bg: #2C2C2C; 
+        }
+        
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--bg); display: flex; justify-content: center; align-items: center; height: 100vh; color: var(--text-main); }
+        
+        .login-container { background: var(--card-bg); padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 350px; text-align: center; border: 1px solid #333; }
+        
+        .logo-container { height: 100px; display: flex; align-items: center; justify-content: center; margin-bottom: 30px; }
+        .logo-img { max-height: 100%; max-width: 80%; object-fit: contain; }
+        
+        h2 { color: var(--text-main); margin-bottom: 5px; font-weight: 800; }
+        .subtitle { color: var(--text-muted); margin-bottom: 25px; font-size: 0.9rem; }
+        
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; }
+        
+        input { width: 100%; padding: 14px; border: 1px solid #444; background: var(--input-bg); color: white; border-radius: 10px; font-size: 1rem; box-sizing: border-box; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--primary); background: #333; }
+        
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 1rem; background: var(--primary); color: #000; margin-top: 10px; transition: transform 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        
+        .toggle-link { margin-top: 25px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; }
+        .toggle-link b { color: var(--primary); }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <!-- LOGO -->
+        <div class="logo-container"><img src="logo.png" alt="iRider Logo" class="logo-img"></div>
+        
+        <!-- FORM DI LOGIN -->
+        <div id="login-form">
+            <h2>Accedi</h2>
+            <p class="subtitle">Gestisci i tuoi guadagni in cloud.</p>
+            <div class="form-group"><label>Email</label><input type="email" id="login-email"></div>
+            <div class="form-group"><label>Password</label><input type="password" id="login-pass"></div>
+            <div style="text-align: right; margin-bottom: 15px;"><span style="font-size: 0.85rem; color: #448AFF; cursor: pointer;" onclick="toggleMode('recovery')">Password dimenticata?</span></div>
+            <button class="btn" id="btn-login">Accedi</button>
+            <div class="toggle-link" onclick="toggleMode('register')">Non hai un account? <b>Registrati</b></div>
+        </div>
+
+        <!-- FORM DI REGISTRAZIONE -->
+        <div id="register-form" class="hidden">
+            <h2>Crea Account</h2>
+            <p class="subtitle">Ti invieremo una mail di verifica.</p>
+            <div class="form-group"><label>Nome (Username)</label><input type="text" id="reg-name"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="reg-email"></div>
+            <div class="form-group"><label>Password (Min 6 caratteri)</label><input type="password" id="reg-pass"></div>
+            <button class="btn" id="btn-register">Crea Account</button>
+            <div class="toggle-link" onclick="toggleMode('login')">Hai già un account? <b>Accedi</b></div>
+        </div>
+
+        <!-- FORM RECUPERO PASSWORD -->
+        <div id="recovery-form" class="hidden">
+            <h2>Recupero Password</h2>
+            <p class="subtitle">Ti invieremo un link per il reset.</p>
+            <div class="form-group"><label>Email</label><input type="email" id="rec-email"></div>
+            <button class="btn" id="btn-recovery">Invia Link di Reset</button>
+            <div class="toggle-link" onclick="toggleMode('login')">Torna al <b>Login</b></div>
+        </div>
+    </div>
+
+    <!-- LOGICA JAVASCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // TUA CONFIGURAZIONE
+        const firebaseConfig = {
+          apiKey: "AIzaSyBKL7JDvwD4kNap7AFSxEPwSSfGBiQbKhw",
+          authDomain: "irider-105bb.firebaseapp.com",
+          projectId: "irider-105bb",
+          storageBucket: "irider-105bb.firebasestorage.app",
+          messagingSenderId: "423016944126",
+          appId: "1:423016944126:web:9f1ae148078b1376d2b0af",
+          measurementId: "G-FZYCQ40LGN"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Funzione per cambiare schermata
+        window.toggleMode = (mode) => {
+            ['login-form', 'register-form', 'recovery-form'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById(mode + '-form').classList.remove('hidden');
+        };
+
+        // GESTIONE REGISTRAZIONE
+        document.getElementById('btn-register').addEventListener('click', async () => {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-pass').value;
+
+            if(!name || !email || !pass) return alert("Compila tutti i campi");
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+                const user = userCredential.user;
+                // Crea il profilo nel database
+                await setDoc(doc(db, "users", user.uid), {
+                    name: name,
+                    email: email,
+                    entries: [],
+                    settings: { regime: 'piva', coeff: 67, tax: 5, inps: 26.23 }
+                });
+                await sendEmailVerification(user);
+                alert("Account creato! Controlla la tua email per verificare l'account prima di accedere.");
+                window.toggleMode('login');
+            } catch (error) {
+                alert("Errore: " + error.message);
+            }
+        });
+
+        // GESTIONE LOGIN
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+                const user = userCredential.user;
+
+                if (!user.emailVerified) {
+                    alert("Per favore verifica la tua email cliccando sul link che ti abbiamo inviato.");
+                }
+                // Vai alla Dashboard
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                console.error(error);
+                alert("Email o Password errati.");
+            }
+        });
+
+        // GESTIONE RECUPERO
+        document.getElementById('btn-recovery').addEventListener('click', async () => {
+            const email = document.getElementById('rec-email').value;
+            if(!email) return alert("Inserisci la tua email");
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert("Email di recupero inviata! Controlla la posta.");
+                window.toggleMode('login');
+            } catch (error) {
+                alert("Errore: " + error.message);
+            }
+        });
+
+        // AUTO-LOGIN (Opzionale)
+        onAuthStateChanged(auth, (user) => {
+            if (user && window.location.pathname.endsWith('index.html')) {
+                // window.location.href = 'dashboard.html'; 
+            }
+        });
+    </script>
+</body>
+</html>

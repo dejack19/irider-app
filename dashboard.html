@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>iRider - Dashboard Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- LIBRERIE PER PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* --- DARK THEME VARIABLES --- */
+        :root {
+            --primary: #FFC244; /* Glovo Yellow */
+            --deliveroo: #00CCBC; /* Deliveroo Teal */
+            --bg: #121212;
+            --sidebar-bg: #1E1E1E;
+            --card-bg: #252525;
+            --input-bg: #2C2C2C;
+            
+            --text-main: #FFFFFF;
+            --text-muted: #A0A0A0;
+            
+            --success: #00E676;
+            --danger: #FF5252;
+            --blue: #448AFF;
+            
+            --radius: 16px;
+            --shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { background-color: var(--bg); color: var(--text-main); height: 100vh; display: flex; overflow: hidden; }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 280px; background: var(--sidebar-bg); height: 100%; display: flex; flex-direction: column;
+            border-right: 1px solid #333; padding: 25px; z-index: 100; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+        }
+
+        .logo-container { 
+            height: 120px; display: flex; align-items: center; justify-content: center; 
+            margin-bottom: 30px; background: transparent;
+        }
+        .logo-img { max-height: 100%; max-width: 80%; object-fit: contain; } 
+        
+        .nav-label { font-size: 0.75rem; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; margin-top: 20px; font-weight: 700; }
+        .nav-link {
+            padding: 14px 16px; border-radius: 12px; cursor: pointer; color: var(--text-muted); font-weight: 600; margin-bottom: 5px; display: flex; align-items: center; gap: 15px; transition: 0.2s;
+        }
+        .nav-link:hover { background: rgba(255, 255, 255, 0.05); color: white; }
+        .nav-link.active { background: rgba(255, 194, 68, 0.15); color: var(--primary); }
+        .nav-link i { width: 20px; text-align: center; }
+
+        .month-list { list-style: none; margin-top: 10px; }
+        .month-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; font-size: 0.9rem; color: var(--text-muted); }
+        .month-item span:last-child { color: var(--text-main); font-weight: bold; }
+
+        /* --- MAIN CONTENT --- */
+        .main-content { flex: 1; overflow-y: auto; padding: 30px; position: relative; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { font-size: 1.8rem; font-weight: 800; color: white; }
+        
+        .user-pill { background: var(--card-bg); padding: 8px 16px; border-radius: 30px; border: 1px solid #333; font-weight: 600; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+        .regime-badge { font-size: 0.7rem; background: var(--primary); color: black; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; font-weight: 800; margin-left: 10px; letter-spacing: 0.5px; }
+
+        /* CARDS */
+        .hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+
+        .card { background: var(--card-bg); border-radius: var(--radius); padding: 25px; box-shadow: var(--shadow); position: relative; overflow: hidden; border: 1px solid #333; }
+        
+        .card-payday { background: linear-gradient(135deg, #1E3C72 0%, #2A5298 100%); border: none; }
+        .card-payday h3 { color: rgba(255,255,255,0.7); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .card-payday .big-number { font-size: 2.5rem; font-weight: 700; color: white; margin-bottom: 5px; }
+        .card-payday .sub-text { font-size: 0.9rem; background: rgba(0,0,0,0.2); display: inline-block; padding: 4px 10px; border-radius: 10px; color: #EEE; }
+
+        .card-month h3 { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; font-weight: 700; }
+        .card-month .big-number { font-size: 2.2rem; font-weight: 800; color: var(--primary); margin-top: 5px; }
+        .card-month .date-badge { position: absolute; top: 20px; right: 20px; background: rgba(255, 194, 68, 0.1); color: var(--primary); font-weight: bold; font-size: 0.75rem; padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(255, 194, 68, 0.3); }
+
+        .platform-breakdown { display: none; margin-top: 15px; border-top: 1px solid #444; padding-top: 15px; }
+        .platform-breakdown.show { display: flex; gap: 15px; }
+        .plat-tag { font-size: 0.8rem; font-weight: 600; padding: 4px 8px; border-radius: 6px; color: #000; display: inline-flex; align-items: center; gap: 5px; }
+        .plat-glovo { background: var(--primary); }
+        .plat-deliv { background: var(--deliveroo); color: white; }
+
+        .stat-item h4 { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; }
+        .stat-item .val { font-size: 1.5rem; font-weight: 700; color: white; }
+        .stat-item .val.green { color: var(--success); }
+        .stat-item .val.red { color: var(--danger); }
+        .stat-item .val.blue { color: var(--blue); }
+
+        /* APPLE SEGMENTED CONTROL */
+        .segmented-control { display: flex; background: #333; padding: 4px; border-radius: 12px; margin-bottom: 25px; position: relative; }
+        .segmented-control input { display: none; }
+        .segmented-control label { flex: 1; text-align: center; padding: 12px; cursor: pointer; font-weight: 600; color: #AAA; z-index: 2; transition: color 0.3s; }
+        .segmented-control .slider { position: absolute; top: 4px; left: 4px; height: calc(100% - 8px); width: calc(50% - 4px); background: #555; border-radius: 9px; transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 1; }
+        #plat-glovo:checked ~ .slider { transform: translateX(0); background: var(--primary); }
+        #plat-deliv:checked ~ .slider { transform: translateX(100%); background: var(--deliveroo); }
+        #plat-glovo:checked + label { color: #000; }
+        #plat-deliv:checked + label + input + label { color: #FFF; }
+
+        /* FORMS */
+        .form-container { max-width: 600px; margin: 0 auto; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-weight: 600; margin-bottom: 10px; color: var(--text-muted); font-size: 0.9rem; }
+        .input-group input, .input-group select { width: 100%; padding: 16px; border: 1px solid #444; border-radius: 12px; font-size: 1rem; outline: none; background: var(--input-bg); color: white; transition: 0.3s; }
+        .input-group input:focus { border-color: var(--primary); background: #333; }
+        
+        .switch-box { background: rgba(255, 194, 68, 0.08); padding: 18px; border-radius: 12px; border: 1px solid rgba(255, 194, 68, 0.3); display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .switch-label-main { color: var(--primary); font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 10px; }
+        input[type="checkbox"] { width: 24px; height: 24px; cursor: pointer; accent-color: var(--primary); }
+
+        .btn-primary { width: 100%; background: var(--primary); color: #000; border: none; padding: 18px; border-radius: 12px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(255, 194, 68, 0.2); }
+        .btn-primary:active { transform: scale(0.98); }
+        
+        .btn-secondary { background: #333; color: white; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-secondary:hover { background: #444; }
+
+        /* TABLE */
+        .history-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        .history-table th { text-align: left; color: #666; font-size: 0.8rem; padding: 0 15px; text-transform: uppercase; }
+        .history-table td { background: var(--card-bg); padding: 15px; color: white; border: 1px solid #333; border-left: none; border-right: none; }
+        .history-table td:first-child { border-left: 1px solid #333; border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+        .history-table td:last-child { border-right: 1px solid #333; border-top-right-radius: 12px; border-bottom-right-radius: 12px; text-align: right; }
+
+        .fab { display: none; position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: var(--primary); color: black; border-radius: 50%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); justify-content: center; align-items: center; font-size: 1.5rem; cursor: pointer; z-index: 500; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; background: #000; }
+            .sidebar { position: fixed; top: 0; left: -290px; height: 100%; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+            .sidebar.open { transform: translateX(290px); }
+            .main-content { padding: 15px; padding-bottom: 100px; height: auto; }
+            .header h1 { font-size: 1.4rem; }
+            .fab { display: flex; }
+            .nav-item-add { display: none; }
+            .hamburger { display: block; font-size: 1.5rem; cursor: pointer; margin-right: 15px; color: white; }
+            .hero-grid { grid-template-columns: 1fr; }
+        }
+
+        .view-section { display: none; animation: fadeIn 0.4s ease; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 90; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <div class="logo-container"><img src="logo.png" alt="Logo" class="logo-img"></div>
+        <div class="nav-label">Menu</div>
+        <div class="nav-link active" onclick="navTo('dashboard')"><i class="fas fa-chart-pie"></i> Panoramica</div>
+        <div class="nav-link nav-item-add" onclick="navTo('inserisci')"><i class="fas fa-plus-circle"></i> Aggiungi Turno</div>
+        <div class="nav-link" onclick="navTo('storico')"><i class="fas fa-list"></i> Storico Turni</div>
+        <div class="nav-link" onclick="navTo('settings')"><i class="fas fa-sliders-h"></i> Impostazioni</div>
+        <div class="nav-label">Archivio Mesi</div>
+        <div id="sidebar-history-container"><ul class="month-list" id="sidebar-month-list"></ul></div>
+        <div style="margin-top:auto;" class="nav-link" id="btn-logout"><i class="fas fa-sign-out-alt"></i> Esci</div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content">
+        <div class="header">
+            <div style="display:flex; align-items:center;">
+                <i class="fas fa-bars hamburger" onclick="toggleMenu()" style="display:none;"></i>
+                <h1 id="page-title">Dashboard</h1>
+            </div>
+            <div class="user-pill">
+                <i class="fas fa-user-circle"></i> <span id="display-username">Rider</span>
+                <span id="header-regime" class="regime-badge">...</span>
+            </div>
+        </div>
+
+        <!-- VIEW: DASHBOARD -->
+        <div id="view-dashboard" class="view-section active">
+            <div class="hero-grid">
+                <!-- Prossimo Pagamento -->
+                <div class="card card-payday">
+                    <h3><i class="far fa-clock"></i> Prossimo Pagamento</h3>
+                    <div class="big-number" id="val-next-pay">€ 0,00</div>
+                    <div class="sub-text">Arriva il: <span id="date-next-pay" style="font-weight:bold; color:white;">...</span></div>
+                </div>
+
+                <!-- Mese Corrente + MultiApp -->
+                <div class="card card-month">
+                    <div class="date-badge" id="badge-current-month">NOV 2025</div>
+                    <h3>Guadagno Lordo Mese</h3>
+                    <div class="big-number" id="val-month-total">€ 0,00</div>
+                    
+                    <div id="platform-breakdown-container" class="platform-breakdown">
+                        <div class="plat-tag plat-glovo">Glovo: <span id="val-split-glovo">€0</span></div>
+                        <div class="plat-tag plat-deliv">Deliveroo: <span id="val-split-deliv">€0</span></div>
+                    </div>
+
+                    <div style="font-size:0.8rem; color:#666; margin-top:5px;">Aggiornato ad oggi</div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="card stat-item">
+                    <h4><i class="fas fa-wallet"></i> Contanti in Tasca</h4>
+                    <div class="val blue" id="val-cash-pocket">€ 0,00</div>
+                </div>
+                <div class="card stat-item">
+                    <h4><i class="fas fa-piggy-bank"></i> Netto Stimato (Mese)</h4>
+                    <div class="val green" id="val-net-month" style="margin-bottom: 10px;">€ 0,00</div>
+                    <div style="background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 8px; border: 1px solid #444; font-size: 0.7rem; color: #aaa; line-height: 1.3; display:flex; gap:8px; align-items:flex-start;">
+                        <i class="fas fa-exclamation-triangle" style="color:var(--primary); margin-top:2px;"></i>
+                        <span>Detrarre i contanti percepiti da questo totale.</span>
+                    </div>
+                </div>
+                <div class="card stat-item">
+                    <h4><i class="fas fa-file-invoice-dollar"></i> Tasse Stimate</h4>
+                    <div class="val red" id="val-tax-month">€ 0,00</div>
+                </div>
+            </div>
+            <div class="card" style="height: 320px;"><canvas id="trendChart"></canvas></div>
+        </div>
+
+        <!-- VIEW: INSERISCI -->
+        <div id="view-inserisci" class="view-section">
+            <div class="card form-container">
+                <h2 style="margin-bottom:25px; color:var(--primary);">Registra Turno</h2>
+                
+                <div class="input-group">
+                    <label>Piattaforma</label>
+                    <div class="segmented-control">
+                        <input type="radio" name="platform" id="plat-glovo" value="glovo" checked>
+                        <label for="plat-glovo">Glovo</label>
+                        <input type="radio" name="platform" id="plat-deliv" value="deliveroo">
+                        <label for="plat-deliv">Deliveroo</label>
+                        <div class="slider"></div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Data Turno</label>
+                    <input type="date" id="inp-date">
+                </div>
+
+                <div class="input-group">
+                    <label>Totale Guadagno App (Lordo) €</label>
+                    <input type="number" id="inp-amount" placeholder="0.00" step="0.01">
+                </div>
+
+                <div class="switch-box">
+                    <span class="switch-label-main"><i class="fas fa-money-bill-wave"></i> Hai ricevuto contanti?</span>
+                    <input type="checkbox" id="inp-is-cash">
+                </div>
+
+                <div class="input-group" id="grp-cash" style="display:none; background:#2c2c22; padding:15px; border-radius:12px; border:1px solid #444;">
+                    <label style="color:#FFC244;">Totale Contanti Presi dai Clienti (€)</label>
+                    <input type="number" id="inp-cash-collected" placeholder="Somma delle banconote" step="0.01">
+                </div>
+
+                <div class="input-group">
+                    <label>KM Percorsi (Opzionale)</label>
+                    <input type="number" id="inp-km" placeholder="0">
+                </div>
+                
+                <button class="btn-primary" id="btn-save-entry">Salva Turno</button>
+                <div style="text-align:center; margin-top:20px; color:#666; cursor:pointer;" id="btn-cancel-edit" onclick="resetForm()">Annulla Modifica</div>
+            </div>
+        </div>
+
+        <!-- VIEW: STORICO -->
+        <div id="view-storico" class="view-section">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="color:var(--text-muted);">Tutti i Movimenti</h3>
+                    <button class="btn-primary btn-secondary" onclick="exportPDF()" style="width:auto; padding:10px 15px; font-size:0.9rem;">
+                        <i class="fas fa-file-pdf"></i> Scarica Report
+                    </button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="history-table" id="history-table"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: SETTINGS -->
+        <div id="view-settings" class="view-section">
+            <div class="card form-container">
+                <h3 style="color:var(--text-main);">Profilo Fiscale</h3>
+                <div class="input-group">
+                    <label>Regime Fiscale</label>
+                    <select id="set-regime">
+                        <option value="piva">Partita IVA (Forfettario)</option>
+                        <option value="occasional">Prestazione Occasionale</option>
+                    </select>
+                </div>
+                <div id="piva-fields">
+                    <div class="input-group"><label>Coeff. Redditività (%)</label><input type="number" id="set-coeff"></div>
+                    <div class="input-group"><label>Imposta Sostitutiva (%)</label><input type="number" id="set-tax"></div>
+                    <div class="input-group"><label>Aliquota INPS (%)</label><input type="number" id="set-inps"></div>
+                </div>
+                <button class="btn-primary" id="btn-save-settings">Salva Impostazioni</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fab" onclick="navTo('inserisci')"><i class="fas fa-plus"></i></div>
+
+    <!-- LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyBKL7JDvwD4kNap7AFSxEPwSSfGBiQbKhw",
+          authDomain: "irider-105bb.firebaseapp.com",
+          projectId: "irider-105bb",
+          storageBucket: "irider-105bb.firebasestorage.app",
+          messagingSenderId: "423016944126",
+          appId: "1:423016944126:web:9f1ae148078b1376d2b0af",
+          measurementId: "G-FZYCQ40LGN"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let userData = null;
+        let chartInstance = null;
+        let editingId = null;
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                await loadData();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        async function loadData() {
+            const snap = await getDoc(doc(db, "users", currentUser.uid));
+            if (snap.exists()) {
+                userData = snap.data();
+                document.getElementById('display-username').innerText = userData.name;
+                initApp();
+            }
+        }
+
+        // --- PDF EXPORT FUNCTION ---
+        window.exportPDF = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Header
+            doc.setFontSize(18);
+            doc.text("Report Guadagni iRider", 14, 20);
+            doc.setFontSize(10);
+            doc.text("Rider: " + userData.name, 14, 30);
+            doc.text("Generato il: " + new Date().toLocaleDateString('it-IT'), 14, 35);
+            
+            // Totals
+            let tGlovo = 0, tDeliv = 0, tCash = 0, tTotal = 0;
+            userData.entries.forEach(e => {
+                tTotal += e.amount;
+                if(e.platform === 'deliveroo') tDeliv += e.amount; else tGlovo += e.amount;
+                if(e.isCash) tCash += (e.cashCollected || 0);
+            });
+
+            doc.text(`Totale Lordo: ${fmtMoney(tTotal)}`, 14, 45);
+            doc.text(`Di cui Glovo: ${fmtMoney(tGlovo)} | Deliveroo: ${fmtMoney(tDeliv)}`, 14, 50);
+            doc.text(`Contanti Ricevuti: ${fmtMoney(tCash)}`, 14, 55);
+
+            // Table
+            const tableData = userData.entries.map(e => [
+                new Date(e.date).toLocaleDateString('it-IT'),
+                e.platform ? (e.platform === 'deliveroo' ? 'Deliveroo' : 'Glovo') : 'Glovo',
+                fmtMoney(e.amount),
+                e.isCash ? fmtMoney(e.cashCollected) : '-',
+                e.km + ' km'
+            ]);
+
+            doc.autoTable({
+                startY: 65,
+                head: [['Data', 'Piattaforma', 'Importo', 'Contanti', 'KM']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [44, 62, 80] }
+            });
+
+            doc.save("Report_iRider.pdf");
+        };
+
+        function getNextPayDayInfo() {
+            const anchor = new Date('2025-12-05T00:00:00');
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            let nextPay = new Date(anchor);
+            while (nextPay < today) { nextPay.setDate(nextPay.getDate() + 14); }
+            const startCycle = new Date(nextPay);
+            startCycle.setDate(startCycle.getDate() - 13); 
+            return { start: startCycle, end: nextPay, payDate: nextPay };
+        }
+
+        function updateDashboard() {
+            const entries = userData.entries;
+            const settings = userData.settings;
+
+            document.getElementById('header-regime').innerText = (settings.regime === 'piva') ? 'P.IVA' : 'OCCAS.';
+            
+            const cycleInfo = getNextPayDayInfo();
+            const cycleEarnings = entries.filter(e => {
+                const d = new Date(e.date);
+                d.setHours(0,0,0,0);
+                return d >= cycleInfo.start && d <= cycleInfo.end;
+            }).reduce((sum, e) => sum + e.amount, 0);
+
+            document.getElementById('val-next-pay').innerText = fmtMoney(cycleEarnings);
+            document.getElementById('date-next-pay').innerText = cycleInfo.payDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const monthNames = ["GEN","FEB","MAR","APR","MAG","GIU","LUG","AGO","SET","OTT","NOV","DIC"];
+            document.getElementById('badge-current-month').innerText = `${monthNames[currentMonth]} ${currentYear}`;
+
+            let monthLordo = 0, monthNetto = 0, monthTasse = 0, totalCashInPocket = 0;
+            let splitGlovo = 0, splitDeliv = 0;
+
+            entries.forEach(e => {
+                const d = new Date(e.date);
+                if(d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+                    monthLordo += e.amount;
+                    if(e.platform === 'deliveroo') splitDeliv += e.amount; else splitGlovo += e.amount;
+                    let tax = 0;
+                    if(settings.regime === 'occasional') tax = e.amount * 0.20;
+                    else {
+                        const imp = e.amount * (settings.coeff/100);
+                        tax = (imp * (settings.tax/100)) + (imp * (settings.inps/100));
+                    }
+                    monthTasse += tax;
+                    monthNetto += (e.amount - tax);
+                }
+                if(e.isCash) totalCashInPocket += (parseFloat(e.cashCollected) || 0);
+            });
+
+            document.getElementById('val-month-total').innerText = fmtMoney(monthLordo);
+            document.getElementById('val-net-month').innerText = fmtMoney(monthNetto);
+            document.getElementById('val-tax-month').innerText = fmtMoney(monthTasse);
+            document.getElementById('val-cash-pocket').innerText = fmtMoney(totalCashInPocket);
+
+            const breakdownContainer = document.getElementById('platform-breakdown-container');
+            if(splitDeliv > 0) {
+                breakdownContainer.classList.add('show');
+                document.getElementById('val-split-glovo').innerText = fmtMoney(splitGlovo);
+                document.getElementById('val-split-deliv').innerText = fmtMoney(splitDeliv);
+            } else { breakdownContainer.classList.remove('show'); }
+
+            renderChart(entries);
+            renderHistory(entries);
+            renderSidebarHistory(entries);
+        }
+
+        function renderSidebarHistory(entries) {
+            const list = document.getElementById('sidebar-month-list');
+            list.innerHTML = '';
+            const monthsMap = {};
+            entries.forEach(e => {
+                const d = new Date(e.date);
+                const key = `${d.getFullYear()}-${d.getMonth()}`; 
+                if (!monthsMap[key]) monthsMap[key] = 0;
+                monthsMap[key] += e.amount;
+            });
+            const sortedKeys = Object.keys(monthsMap).sort((a,b) => {
+                const [yA, mA] = a.split('-');
+                const [yB, mB] = b.split('-');
+                return new Date(yB, mB) - new Date(yA, mA);
+            });
+            const monthNames = ["GEN","FEB","MAR","APR","MAG","GIU","LUG","AGO","SET","OTT","NOV","DIC"];
+            sortedKeys.forEach(key => {
+                const [year, monthIdx] = key.split('-');
+                const li = document.createElement('li');
+                li.className = 'month-item';
+                li.innerHTML = `<span>${monthNames[parseInt(monthIdx)]} ${year}</span> <span>${fmtMoney(monthsMap[key])}</span>`;
+                list.appendChild(li);
+            });
+        }
+
+        function renderChart(entries) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            const dataSlice = entries.slice(0, 7).reverse();
+            if(chartInstance) chartInstance.destroy();
+            Chart.defaults.color = '#A0A0A0';
+            Chart.defaults.borderColor = '#333';
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dataSlice.map(e => new Date(e.date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'})),
+                    datasets: [{
+                        label: 'Guadagno',
+                        data: dataSlice.map(e => e.amount),
+                        backgroundColor: dataSlice.map(e => e.platform === 'deliveroo' ? '#00CCBC' : '#FFC244'),
+                        borderRadius: 6,
+                        barThickness: 20
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#333' } }, x: { grid: { display:false } } } }
+            });
+        }
+
+        function renderHistory(entries) {
+            const table = document.getElementById('history-table');
+            table.innerHTML = '';
+            entries.forEach(e => {
+                const tr = document.createElement('tr');
+                const platIcon = e.platform === 'deliveroo' ? '<i class="fas fa-bicycle" style="color:#00CCBC"></i> Deliv' : '<i class="fas fa-bolt" style="color:#FFC244"></i> Glovo';
+                tr.innerHTML = `
+                    <td style="font-weight:600; color:#eee;">
+                        ${new Date(e.date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'})}<br>
+                        <span style="font-size:0.7rem; color:#888; font-weight:400;">${platIcon} ${e.isCash ? ' • Cash' : ''}</span>
+                    </td>
+                    <td style="font-weight:bold;">€ ${e.amount.toFixed(2)}</td>
+                    <td>
+                        <i class="fas fa-pen" style="color:#448AFF; cursor:pointer; margin-right:15px;" onclick="window.editItem(${e.id})"></i>
+                        <i class="fas fa-trash" style="color:#FF5252; cursor:pointer;" onclick="window.deleteItem(${e.id})"></i>
+                    </td>
+                `;
+                table.appendChild(tr);
+            });
+        }
+
+        document.getElementById('btn-save-entry').addEventListener('click', async () => {
+            const date = document.getElementById('inp-date').value;
+            const amount = parseFloat(document.getElementById('inp-amount').value);
+            const km = parseFloat(document.getElementById('inp-km').value) || 0;
+            const isCash = document.getElementById('inp-is-cash').checked;
+            const cashCollected = isCash ? parseFloat(document.getElementById('inp-cash-collected').value) : 0;
+            const platform = document.querySelector('input[name="platform"]:checked').value;
+
+            if(!date || isNaN(amount)) return alert("Inserisci Data e Importo");
+            const entry = { id: editingId || Date.now(), date, amount, km, isCash, cashCollected, platform };
+
+            if(editingId) {
+                const idx = userData.entries.findIndex(x => x.id === editingId);
+                userData.entries[idx] = entry;
+                editingId = null;
+            } else { userData.entries.push(entry); }
+
+            userData.entries.sort((a,b) => new Date(b.date) - new Date(a.date));
+            await updateDoc(doc(db, "users", currentUser.uid), { entries: userData.entries });
+            updateDashboard();
+            resetForm();
+            window.navTo('dashboard');
+        });
+
+        window.deleteItem = async (id) => {
+            if(confirm("Eliminare turno?")) {
+                userData.entries = userData.entries.filter(e => e.id !== id);
+                await updateDoc(doc(db, "users", currentUser.uid), { entries: userData.entries });
+                updateDashboard();
+            }
+        };
+
+        window.editItem = (id) => {
+            const e = userData.entries.find(x => x.id === id);
+            editingId = id;
+            document.getElementById('inp-date').value = e.date;
+            document.getElementById('inp-amount').value = e.amount;
+            document.getElementById('inp-km').value = e.km;
+            document.getElementById('inp-is-cash').checked = e.isCash;
+            document.getElementById('inp-cash-collected').value = e.cashCollected || 0;
+            if(e.platform === 'deliveroo') document.getElementById('plat-deliv').checked = true;
+            else document.getElementById('plat-glovo').checked = true;
+            toggleCashInput();
+            document.getElementById('btn-save-entry').innerText = "Aggiorna Turno";
+            document.getElementById('btn-cancel-edit').style.display = 'block';
+            window.navTo('inserisci');
+        };
+
+        window.resetForm = () => {
+            editingId = null;
+            document.getElementById('inp-date').valueAsDate = new Date();
+            document.getElementById('inp-amount').value = '';
+            document.getElementById('inp-km').value = '';
+            document.getElementById('inp-is-cash').checked = false;
+            document.getElementById('inp-cash-collected').value = '';
+            document.getElementById('plat-glovo').checked = true;
+            toggleCashInput();
+            document.getElementById('btn-save-entry').innerText = "Salva Turno";
+            document.getElementById('btn-cancel-edit').style.display = 'none';
+        };
+
+        function fmtMoney(n) { return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n); }
+        window.navTo = (view) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + view).classList.add('active');
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            if(window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display = 'none'; }
+        };
+        window.toggleMenu = () => {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('open');
+            document.getElementById('overlay').style.display = sb.classList.contains('open') ? 'block' : 'none';
+        };
+        const cashCheck = document.getElementById('inp-is-cash');
+        const toggleCashInput = () => document.getElementById('grp-cash').style.display = cashCheck.checked ? 'block' : 'none';
+        cashCheck.addEventListener('change', toggleCashInput);
+        const regimeSel = document.getElementById('set-regime');
+        regimeSel.addEventListener('change', () => { document.getElementById('piva-fields').style.display = regimeSel.value === 'piva' ? 'block' : 'none'; });
+        document.getElementById('btn-save-settings').addEventListener('click', async () => {
+            userData.settings = {
+                regime: regimeSel.value,
+                coeff: parseFloat(document.getElementById('set-coeff').value),
+                tax: parseFloat(document.getElementById('set-tax').value),
+                inps: parseFloat(document.getElementById('set-inps').value)
+            };
+            await updateDoc(doc(db, "users", currentUser.uid), { settings: userData.settings });
+            updateDashboard();
+            alert("Salvato");
+            window.navTo('dashboard');
+        });
+        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+        function initApp() { resetForm(); const s = userData.settings; document.getElementById('set-regime').value = s.regime; document.getElementById('set-coeff').value = s.coeff; document.getElementById('set-tax').value = s.tax; document.getElementById('set-inps').value = s.inps; regimeSel.dispatchEvent(new Event('change')); updateDashboard(); }
+    </script>
+</body>
+</html>
